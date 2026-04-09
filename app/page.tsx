@@ -9,7 +9,7 @@ export default function Page() {
   const [error, setError] = useState('');
 
   const scan = async () => {
-    if (!url) return;
+    if (!url.trim()) return;
 
     setLoading(true);
     setError('');
@@ -18,14 +18,28 @@ export default function Page() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scan`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ url }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Scan failed');
+      // ✅ SAFE response handling (fix HTML crash)
+      const text = await res.text();
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error('Server error: Invalid JSON response (API not working properly)');
+      }
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Scan failed');
+      }
 
       setResult(data);
+
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -93,21 +107,26 @@ export default function Page() {
 
           <button
             onClick={scan}
+            disabled={loading}
             style={{
               marginTop: '10px',
               padding: '12px',
               width: '100%',
-              background: '#22c55e',
+              background: loading ? '#374151' : '#22c55e',
               border: 'none',
               borderRadius: '8px',
               fontWeight: 'bold',
-              cursor: 'pointer'
+              cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
             {loading ? 'Scanning AI...' : 'Run AI Scan'}
           </button>
 
-          {error && <p style={{ color: 'red' }}>{error}</p>}
+          {error && (
+            <p style={{ color: '#ef4444', marginTop: '10px' }}>
+              {error}
+            </p>
+          )}
         </div>
 
         {/* RESULT */}
